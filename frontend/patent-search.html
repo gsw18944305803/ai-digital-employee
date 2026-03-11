@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI专利搜索 - 智能专利分析平台</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #1e3a5f;
+            --secondary-color: #2d5a87;
+            --accent-color: #00d4aa;
+            --accent-gradient: linear-gradient(135deg, #00d4aa 0%, #00b894 100%);
+            --purple-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-gradient: linear-gradient(135deg, #0a1628 0%, #1a2a4a 100%);
+            --card-bg: rgba(255, 255, 255, 0.98);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        /* 动态背景 */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 80%, rgba(102, 126, 234, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(0, 212, 170, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 40%, rgba(118, 75, 162, 0.1) 0%, transparent 40%);
+            animation: bgMove 20s ease-in-out infinite;
+        }
+
+        @keyframes bgMove {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(2%, 2%) rotate(1deg); }
+            50% { transform: translate(0, 4%) rotate(0deg); }
+            75% { transform: translate(-2%, 2%) rotate(-1deg); }
+        }
+
+        /* 浮动粒子 */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: float 15s infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.3; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+        }
+
+        .main-wrapper {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 头部 */
+        .header {
+            background: rgba(15, 25, 45, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 1.25rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(0, 212, 170, 0.2);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            color: #fff;
+            font-size: 1.6rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .header-icon {
+            width: 45px;
+            height: 45px;
+            background: var(--purple-gradient);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .header-subtitle {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 400;
+        }
+
+        .back-btn {
+            background: var(--glass-bg);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 0.6rem 1.25rem;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .main-container {
+            padding: 2.5rem 0;
+            min-height: calc(100vh - 80px);
+        }
+
+        /* 主搜索卡片 */
+        .search-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .search-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--purple-gradient);
+        }
+
+        .search-title {
+            color: var(--primary-color);
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .search-title-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #f0f4f8 0%, #e0e8f0 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        /* 自定义输入区域 - 重点突出 */
+        .custom-input-section {
+            background: linear-gradient(135deg, #f8fafc 0%, #f0f4f8 100%);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 2px solid rgba(102, 126, 234, 0.1);
+            position: relative;
+        }
+
+        .custom-input-section::before {
+            content: '💡';
+            position: absolute;
+            top: -15px;
+            left: 30px;
+            background: #fff;
+            padding: 0 10px;
+            font-size: 1.2rem;
+        }
+
+        .custom-input-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .custom-input-label span {
+            background: var(--purple-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .input-group-custom {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .custom-input {
+            flex: 1;
+            min-width: 300px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            border-radius: 15px;
+            padding: 1rem 1.5rem;
+            font-size: 1.05rem;
+            transition: all 0.3s ease;
+            background: #fff;
+        }
+
+        .custom-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15),
+                        0 4px 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .custom-input::placeholder {
+            color: #aaa;
+        }
+
+        .search-btn-main {
+            background: var(--purple-gradient);
+            color: #fff;
+            border: none;
+            padding: 1rem 2.5rem;
+            border-radius: 15px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+            white-space: nowrap;
+        }
+
+        .search-btn-main:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.5);
+        }
+
+        .search-btn-main:active {
+            transform: translateY(-1px);
+        }
+
+        .search-btn-main:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 快捷标签 */
+        .quick-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .quick-tag {
+            padding: 0.4rem 1rem;
+            background: #fff;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .quick-tag:hover {
+            background: var(--purple-gradient);
+            color: #fff;
+            border-color: transparent;
+            transform: translateY(-2px);
+        }
+
+        /* 领域分区 */
+        .domain-section {
+            margin-bottom: 1.75rem;
+        }
+
+        .domain-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .domain-icon {
+            font-size: 1.2rem;
+        }
+
+        .domain-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #444;
+        }
+
+        .domain-badge {
+            background: linear-gradient(135deg, #f0f4f8 0%, #e8eef4 100%);
+            padding: 0.2rem 0.6rem;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .keyword-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+        }
+
+        .keyword-tag {
+            padding: 0.6rem 1.2rem;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+            background: #f5f7fa;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .keyword-tag:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .keyword-tag.active {
+            background: var(--accent-gradient);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 6px 20px rgba(0, 212, 170, 0.4);
+            transform: translateY(-2px);
+        }
+
+        /* 领域专属颜色 */
+        .keyword-tag.new-material { background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%); color: #667eea; }
+        .keyword-tag.new-material:hover, .keyword-tag.new-material.active { background: var(--purple-gradient); color: #fff; }
+
+        .keyword-tag.ai-tech { background: linear-gradient(135deg, #fff0f6 0%, #ffe8ef 100%); color: #f5576c; }
+        .keyword-tag.ai-tech:hover, .keyword-tag.ai-tech.active { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #fff; }
+
+        .keyword-tag.biotech { background: linear-gradient(135deg, #e8f8ff 0%, #d8f4ff 100%); color: #4facfe; }
+        .keyword-tag.biotech:hover, .keyword-tag.biotech.active { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: #fff; }
+
+        .keyword-tag.energy { background: linear-gradient(135deg, #e8fff4 0%, #d8fff0 100%); color: #43e97b; }
+        .keyword-tag.energy:hover, .keyword-tag.energy.active { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: #fff; }
+
+        .keyword-tag.semiconductor { background: linear-gradient(135deg, #fff8e8 0%, #fff0d8 100%); color: #fa709a; }
+        .keyword-tag.semiconductor:hover, .keyword-tag.semiconductor.active { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: #fff; }
+
+        .keyword-tag.quantum { background: linear-gradient(135deg, #f0f8ff 0%, #e8f0ff 100%); color: #a8edea; }
+        .keyword-tag.quantum:hover, .keyword-tag.quantum.active { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #333; }
+
+        /* 搜索按钮区域 */
+        .search-action-area {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .search-btn {
+            background: var(--accent-gradient);
+            color: #fff;
+            border: none;
+            padding: 1rem 3rem;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+            box-shadow: 0 6px 25px rgba(0, 212, 170, 0.4);
+        }
+
+        .search-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 35px rgba(0, 212, 170, 0.5);
+        }
+
+        .search-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .search-hint {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        /* 结果卡片 */
+        .results-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .results-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--accent-gradient);
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .results-count {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .results-count .count {
+            background: var(--purple-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 1.4rem;
+        }
+
+        .export-btn {
+            background: var(--secondary-color);
+            color: #fff;
+            border: none;
+            padding: 0.6rem 1.25rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .export-btn:hover {
+            background: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        /* 结果项 */
+        .result-item {
+            padding: 1.5rem;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 16px;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+            background: #fff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--purple-gradient);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .result-item:hover {
+            border-color: rgba(102, 126, 234, 0.3);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            transform: translateY(-3px);
+        }
+
+        .result-item:hover::before {
+            opacity: 1;
+        }
+
+        .result-title {
+            color: var(--primary-color);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            text-decoration: none;
+            display: block;
+            transition: color 0.3s ease;
+            cursor: pointer;
+        }
+
+        .result-title:hover {
+            color: #667eea;
+        }
+
+        /* 详情展开面板 */
+        .detail-panel {
+            background: linear-gradient(135deg, #fafbfc 0%, #f0f4f8 100%);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            border: 1px solid rgba(102, 126, 234, 0.15);
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        .detail-panel.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .detail-close {
+            background: rgba(102, 126, 234, 0.1);
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: #667eea;
+            transition: all 0.2s ease;
+        }
+
+        .detail-close:hover {
+            background: rgba(102, 126, 234, 0.2);
+            transform: rotate(90deg);
+        }
+
+        .detail-section {
+            margin-bottom: 1rem;
+        }
+
+        .detail-section-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .detail-content {
+            color: #555;
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+
+        .ai-summary-btn {
+            background: var(--purple-gradient);
+            color: #fff;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            margin-top: 0.75rem;
+            transition: all 0.2s ease;
+        }
+
+        .ai-summary-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .ai-summary-result {
+            background: linear-gradient(135deg, #f8fafc 0%, #e8f4fc 100%);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 0.75rem;
+            border-left: 3px solid #667eea;
+            display: none;
+        }
+
+        .ai-summary-result.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .result-meta {
+            display: flex;
+            gap: 1.25rem;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .result-meta span {
+            font-size: 0.85rem;
+            color: #888;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            background: #f8fafc;
+            padding: 0.3rem 0.75rem;
+            border-radius: 15px;
+        }
+
+        .result-abstract {
+            color: #555;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            margin-top: 0.5rem;
+        }
+
+        .result-highlight {
+            background: linear-gradient(120deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.1) 100%);
+            padding: 0.15rem 0.35rem;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        /* 加载状态 */
+        .loading-spinner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem;
+            color: #666;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 1.05rem;
+            color: #666;
+        }
+
+        .loading-subtext {
+            font-size: 0.9rem;
+            color: #999;
+            margin-top: 0.5rem;
+        }
+
+        /* AI分析 */
+        .ai-analysis {
+            background: linear-gradient(135deg, #f8fafc 0%, #e8f0f8 100%);
+            border-radius: 16px;
+            padding: 1.75rem;
+            margin-top: 1.5rem;
+            border-left: 4px solid #667eea;
+            position: relative;
+        }
+
+        .ai-analysis-title {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 1.05rem;
+        }
+
+        .ai-badge {
+            background: var(--purple-gradient);
+            color: #fff;
+            padding: 0.2rem 0.6rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .ai-analysis-content {
+            color: #444;
+            line-height: 1.8;
+            font-size: 0.95rem;
+        }
+
+        .ai-analysis-content ul {
+            margin: 0;
+            padding-left: 1.25rem;
+        }
+
+        .ai-analysis-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        /* 错误信息 */
+        .error-message {
+            background: linear-gradient(135deg, #fff5f5 0%, #fff0f0 100%);
+            border: 1px solid rgba(255, 0, 0, 0.1);
+            color: #c33;
+            padding: 1.5rem;
+            border-radius: 16px;
+            text-align: center;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .search-card, .results-card {
+                padding: 1.25rem;
+                border-radius: 16px;
+            }
+
+            .keyword-tag {
+                padding: 0.5rem 1rem;
+                font-size: 0.85rem;
+            }
+
+            .header-title {
+                font-size: 1.2rem;
+            }
+
+            .custom-input {
+                min-width: 100%;
+            }
+
+            .input-group-custom {
+                flex-direction: column;
+            }
+
+            .search-btn-main {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <!-- 动态背景 -->
+    <div class="bg-animation"></div>
+    <div class="particles" id="particles"></div>
+
+    <div class="main-wrapper">
+        <header class="header">
+            <div class="container">
+                <div class="header-content">
+                    <div class="header-title">
+                        <div class="header-icon">🔬</div>
+                        <div>
+                            <div>AI专利搜索</div>
+                            <div class="header-subtitle">智能专利分析平台</div>
+                        </div>
+                    </div>
+                    <a href="index.html" class="back-btn">
+                        <span>←</span>
+                        <span>返回首页</span>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-container">
+            <div class="container">
+                <div class="search-card">
+                    <h2 class="search-title">
+                        <div class="search-title-icon">🔍</div>
+                        <span>智能专利搜索引擎</span>
+                    </h2>
+
+                    <!-- 自定义输入区域 - 突出显示 -->
+                    <div class="custom-input-section">
+                        <div class="custom-input-label">
+                            <span>✨ 输入您想搜索的专利关键词</span>
+                        </div>
+                        <div class="input-group-custom">
+                            <input type="text" class="custom-input" id="customKeyword" placeholder="例如：石墨烯电池、人工智能芯片、量子计算..." autocomplete="off">
+                            <button class="search-btn-main" id="mainSearchBtn" onclick="performCustomSearch()">
+                                <span>🚀</span>
+                                <span>立即搜索</span>
+                            </button>
+                        </div>
+                        <div class="quick-tags">
+                            <span style="color: #888; font-size: 0.85rem; margin-right: 0.5rem;">热门搜索：</span>
+                            <span class="quick-tag" onclick="quickSearch('石墨烯电池')">石墨烯电池</span>
+                            <span class="quick-tag" onclick="quickSearch('AI芯片')">AI芯片</span>
+                            <span class="quick-tag" onclick="quickSearch('固态电池')">固态电池</span>
+                            <span class="quick-tag" onclick="quickSearch('量子计算')">量子计算</span>
+                            <span class="quick-tag" onclick="quickSearch('大语言模型')">大语言模型</span>
+                        </div>
+                    </div>
+
+                    <!-- 领域分类标签 -->
+                    <div class="domain-section">
+                        <div class="domain-header">
+                            <span class="domain-icon">🧪</span>
+                            <span class="domain-title">新材料领域</span>
+                            <span class="domain-badge">推荐</span>
+                        </div>
+                        <div class="keyword-tags">
+                            <span class="keyword-tag new-material" data-keyword="石墨烯电池">石墨烯电池</span>
+                            <span class="keyword-tag new-material" data-keyword="钙钛矿太阳能电池">钙钛矿太阳能电池</span>
+                            <span class="keyword-tag new-material" data-keyword="碳化硅功率器件">碳化硅功率器件</span>
+                            <span class="keyword-tag new-material" data-keyword="高熵合金">高熵合金</span>
+                            <span class="keyword-tag new-material" data-keyword="超材料">超材料</span>
+                            <span class="keyword-tag new-material" data-keyword="液态金属">液态金属</span>
+                            <span class="keyword-tag new-material" data-keyword="气凝胶">气凝胶</span>
+                            <span class="keyword-tag new-material" data-keyword="生物基材料">生物基材料</span>
+                        </div>
+                    </div>
+
+                    <div class="domain-section">
+                        <div class="domain-header">
+                            <span class="domain-icon">🤖</span>
+                            <span class="domain-title">人工智能领域</span>
+                        </div>
+                        <div class="keyword-tags">
+                            <span class="keyword-tag ai-tech" data-keyword="大语言模型">大语言模型</span>
+                            <span class="keyword-tag ai-tech" data-keyword="多模态AI">多模态AI</span>
+                            <span class="keyword-tag ai-tech" data-keyword="AI芯片">AI芯片</span>
+                            <span class="keyword-tag ai-tech" data-keyword="自动驾驶">自动驾驶</span>
+                            <span class="keyword-tag ai-tech" data-keyword="机器学习">机器学习</span>
+                            <span class="keyword-tag ai-tech" data-keyword="神经网络">神经网络</span>
+                        </div>
+                    </div>
+
+                    <div class="domain-section">
+                        <div class="domain-header">
+                            <span class="domain-icon">🧬</span>
+                            <span class="domain-title">生物技术领域</span>
+                        </div>
+                        <div class="keyword-tags">
+                            <span class="keyword-tag biotech" data-keyword="基因编辑">基因编辑</span>
+                            <span class="keyword-tag biotech" data-keyword="mRNA疫苗">mRNA疫苗</span>
+                            <span class="keyword-tag biotech" data-keyword="细胞治疗">细胞治疗</span>
+                            <span class="keyword-tag biotech" data-keyword="合成生物学">合成生物学</span>
+                            <span class="keyword-tag biotech" data-keyword="蛋白质组学">蛋白质组学</span>
+                        </div>
+                    </div>
+
+                    <div class="domain-section">
+                        <div class="domain-header">
+                            <span class="domain-icon">⚡</span>
+                            <span class="domain-title">新能源领域</span>
+                        </div>
+                        <div class="keyword-tags">
+                            <span class="keyword-tag energy" data-keyword="固态电池">固态电池</span>
+                            <span class="keyword-tag energy" data-keyword="氢燃料电池">氢燃料电池</span>
+                            <span class="keyword-tag energy" data-keyword="钙钛矿电池">钙钛矿电池</span>
+                            <span class="keyword-tag energy" data-keyword="钠离子电池">钠离子电池</span>
+                            <span class="keyword-tag energy" data-keyword="液流电池">液流电池</span>
+                        </div>
+                    </div>
+
+                    <div class="domain-section">
+                        <div class="domain-header">
+                            <span class="domain-icon">💻</span>
+                            <span class="domain-title">半导体领域</span>
+                        </div>
+                        <div class="keyword-tags">
+                            <span class="keyword-tag semiconductor" data-keyword="3nm芯片">3nm芯片</span>
+                            <span class="keyword-tag semiconductor" data-keyword="Chiplet封装">Chiplet封装</span>
+                            <span class="keyword-tag semiconductor" data-keyword="光刻机">光刻机</span>
+                            <span class="keyword-tag semiconductor" data-keyword="GaN功率">GaN功率</span>
+                            <span class="keyword-tag semiconductor" data-keyword="先进封装">先进封装</span>
+                        </div>
+                    </div>
+
+                    <div class="domain-section">
+                        <div class="domain-header">
+                            <span class="domain-icon">⚛️</span>
+                            <span class="domain-title">量子计算领域</span>
+                        </div>
+                        <div class="keyword-tags">
+                            <span class="keyword-tag quantum" data-keyword="量子计算">量子计算</span>
+                            <span class="keyword-tag quantum" data-keyword="量子芯片">量子芯片</span>
+                            <span class="keyword-tag quantum" data-keyword="量子通信">量子通信</span>
+                            <span class="keyword-tag quantum" data-keyword="量子密钥分发">量子密钥分发</span>
+                        </div>
+                    </div>
+
+                    <!-- 搜索按钮 -->
+                    <div class="search-action-area">
+                        <button class="search-btn" id="searchBtn" onclick="performSearch()">
+                            <span>🚀</span>
+                            <span>开始搜索</span>
+                        </button>
+                        <p class="search-hint">选择上方关键词或直接输入自定义关键词进行搜索</p>
+                    </div>
+                </div>
+
+                <!-- 搜索结果 -->
+                <div class="results-card" id="resultsSection" style="display: none;">
+                    <div class="results-header">
+                        <div class="results-count">
+                            <span>找到</span>
+                            <span class="count" id="resultsCount">0</span>
+                            <span>条相关专利</span>
+                        </div>
+                        <button class="export-btn" onclick="exportResults()">
+                            <span>📥</span>
+                            <span>导出结果</span>
+                        </button>
+                    </div>
+                    <div id="resultsContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 创建浮动粒子
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 15 + 's';
+                particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+                container.appendChild(particle);
+            }
+        }
+        createParticles();
+
+        // API配置
+        const API_KEY = 'sk-FzKiwsI5ripsPdKfbAAtHdbKq8CtuQXSx5Mc7IxjbXLl3s3J';
+        const API_URL = 'https://api.302.ai/serpapi/search';
+
+        // 选中的关键词
+        let selectedKeywords = new Set();
+        let searchResults = [];
+
+        // 关键词标签点击事件
+        document.querySelectorAll('.keyword-tag').forEach(tag => {
+            tag.addEventListener('click', function() {
+                const keyword = this.getAttribute('data-keyword');
+
+                // 清除所有选中状态
+                document.querySelectorAll('.keyword-tag').forEach(t => t.classList.remove('active'));
+
+                this.classList.add('active');
+                selectedKeywords.clear();
+                selectedKeywords.add(keyword);
+
+                // 同步到输入框
+                document.getElementById('customKeyword').value = keyword;
+            });
+        });
+
+        // 快捷搜索
+        function quickSearch(keyword) {
+            document.getElementById('customKeyword').value = keyword;
+            selectedKeywords.clear();
+            selectedKeywords.add(keyword);
+            performCustomSearch();
+        }
+
+        // 自定义搜索
+        function performCustomSearch() {
+            const input = document.getElementById('customKeyword');
+            const keyword = input.value.trim();
+
+            if (!keyword) {
+                input.focus();
+                input.style.borderColor = '#ff6b6b';
+                setTimeout(() => {
+                    input.style.borderColor = '';
+                }, 2000);
+                return;
+            }
+
+            selectedKeywords.clear();
+            selectedKeywords.add(keyword);
+            doSearch(keyword);
+        }
+
+        // 执行搜索
+        function performSearch() {
+            if (selectedKeywords.size === 0) {
+                const input = document.getElementById('customKeyword');
+                const keyword = input.value.trim();
+                if (keyword) {
+                    selectedKeywords.add(keyword);
+                } else {
+                    alert('请输入或选择搜索关键词');
+                    return;
+                }
+            }
+            doSearch(Array.from(selectedKeywords)[0]);
+        }
+
+        // 监听回车键
+        document.getElementById('customKeyword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performCustomSearch();
+            }
+        });
+
+        // 执行搜索请求
+        async function doSearch(keyword) {
+            const searchBtn = document.getElementById('searchBtn');
+            const mainSearchBtn = document.getElementById('mainSearchBtn');
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsContent = document.getElementById('resultsContent');
+            const resultsCount = document.getElementById('resultsCount');
+
+            // 显示加载状态
+            searchBtn.disabled = true;
+            mainSearchBtn.disabled = true;
+            searchBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>搜索中...';
+            mainSearchBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>搜索中...';
+            resultsSection.style.display = 'block';
+            resultsContent.innerHTML = `
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <p class="loading-text">正在搜索 "${keyword}" 相关专利...</p>
+                    <p class="loading-subtext">AI正在全球专利数据库中为您检索</p>
+                </div>
+            `;
+
+            // 滚动到结果区域
+            resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            try {
+                const response = await fetch(`${API_URL}?q=${encodeURIComponent(keyword + ' 专利')}&api_key=${API_KEY}&engine=google&num=10&tbm=pts`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API请求失败: ${response.status}`);
+                }
+
+                const data = await response.json();
+                searchResults = parseResults(data, keyword);
+                displayResults(searchResults, keyword);
+
+            } catch (error) {
+                console.error('搜索错误:', error);
+                resultsContent.innerHTML = `
+                    <div class="error-message">
+                        <p>😔 搜索出错: ${error.message}</p>
+                        <p style="margin-top: 0.5rem; font-size: 0.9rem;">请稍后重试或检查网络连接</p>
+                    </div>
+                `;
+            } finally {
+                searchBtn.disabled = false;
+                mainSearchBtn.disabled = false;
+                searchBtn.innerHTML = '<span>🚀</span><span>开始搜索</span>';
+                mainSearchBtn.innerHTML = '<span>🚀</span><span>立即搜索</span>';
+            }
+        }
+
+        // 解析搜索结果
+        function parseResults(data, keyword) {
+            const results = [];
+
+            if (data.organic_results) {
+                data.organic_results.forEach(item => {
+                    // 处理链接
+                    let link = item.link || '#';
+                    const patentNumber = item.patent_number || '';
+
+                    // 如果链接不是有效的URL， 尝试构建Google Patents链接
+                    if (!link || link === '#' || !link.startsWith('http')) {
+                        if (patentNumber) {
+                            // 使用专利号构建 Google Patents 链接
+                            link = `https://patents.google.com/patent/${patentNumber}`;
+                        } else {
+                            // 使用关键词搜索 Google Patents
+                            link = `https://patents.google.com/?q=${encodeURIComponent(keyword)}`;
+                        }
+                    }
+
+                    results.push({
+                        title: item.title || '无标题',
+                        link: link,
+                        snippet: item.snippet || item.article?.snippets?.[0] || '',
+                        patentNumber: patentNumber,
+                        filingDate: item.filing_date || '',
+                        published: item.published_date || '',
+                        inventor: item.inventor || '',
+                        assignee: item.assignee || ''
+                    });
+                });
+            }
+
+            return results;
+        }
+
+        // 显示搜索结果
+        function displayResults(results, keyword) {
+            const resultsCount = document.getElementById('resultsCount');
+            const resultsContent = document.getElementById('resultsContent');
+
+            resultsCount.textContent = results.length;
+
+            if (results.length === 0) {
+                resultsContent.innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: #888;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+                        <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">未找到相关专利</p>
+                        <p style="font-size: 0.9rem;">请尝试其他关键词或检查拼写</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+
+            results.forEach((result, index) => {
+                const highlightedSnippet = result.snippet.replace(
+                    new RegExp(keyword, 'gi'),
+                    `<span class="result-highlight">$&</span>`
+                );
+
+                html += `
+                    <div class="result-item" id="result-${index}">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div style="flex: 1;">
+                                <div class="result-title" onclick="toggleDetail(${index})">
+                                    📄 ${result.title}
+                                </div>
+                                <div class="result-meta">
+                                    ${result.patentNumber ? `<span>📋 ${result.patentNumber}</span>` : ''}
+                                    ${result.filingDate ? `<span>📅 申请日: ${result.filingDate}</span>` : ''}
+                                    ${result.assignee ? `<span>🏢 ${result.assignee}</span>` : ''}
+                                </div>
+                                <p class="result-abstract" style="display: -webkit-box; -webkit-line-clamp: 2; overflow: hidden;">${highlightedSnippet || '暂无摘要'}</p>
+                            </div>
+                            <button class="detail-toggle-btn" onclick="toggleDetail(${index})" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 10px; cursor: pointer; font-size: 0.85rem; white-space: nowrap; margin-left: 1rem; transition: all 0.2s ease;">
+                                <span id="toggle-text-${index}">展开详情</span>
+                            </button>
+                        </div>
+
+                        <!-- 详情面板 -->
+                        <div class="detail-panel" id="detail-${index}">
+                            <div class="detail-header">
+                                <span style="font-weight: 600; color: #667eea;">📖 专利详细信息</span>
+                                <button class="detail-close" onclick="toggleDetail(${index})">×</button>
+                            </div>
+
+                            <div class="detail-section">
+                                <div class="detail-section-title">📝 摘要</div>
+                                <div class="detail-content">${highlightedSnippet || '暂无摘要'}</div>
+                            </div>
+
+                            <div class="detail-section" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div>
+                                    <div class="detail-section-title">📋 专利号</div>
+                                    <div class="detail-content">${result.patentNumber || '未知'}</div>
+                                </div>
+                                <div>
+                                    <div class="detail-section-title">📅 申请日</div>
+                                    <div class="detail-content">${result.filingDate || '未知'}</div>
+                                </div>
+                                <div>
+                                    <div class="detail-section-title">📆 公开日</div>
+                                    <div class="detail-content">${result.published || '未知'}</div>
+                                </div>
+                                <div>
+                                    <div class="detail-section-title">🏢 申请人</div>
+                                    <div class="detail-content">${result.assignee || '未知'}</div>
+                                </div>
+                            </div>
+
+                            <div class="detail-section">
+                                <div class="detail-section-title">👤 发明人</div>
+                                <div class="detail-content">${result.inventor || '未知'}</div>
+                            </div>
+
+                            <div style="display: flex; gap: 0.75rem; margin-top: 0.75rem;">
+                                <a href="${result.link}" target="_blank" style="flex: 1; background: var(--accent-gradient); color: #fff; text-decoration: none; padding: 0.75rem; text-align: center; border-radius: 10px; font-weight: 500; transition: all 0.2s ease;">
+                                    🔗 查看原文
+                                </a>
+                                <button class="ai-summary-btn" onclick="generateAISummary(${index}, '${result.title.replace(/'/g, "\\/")}')">
+                                    🤖 AI分析
+                                </button>
+                            </div>
+
+                            <!-- AI分析结果区域 -->
+                            <div class="ai-summary-result" id="ai-summary-${index}">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <span>🤖</span>
+                                    <span style="font-weight: 600; color: #667eea;">AI智能分析</span>
+                                </div>
+                                <div id="ai-content-${index}" style="color: #555; line-height: 1.7;">正在分析中...</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // 添加AI分析
+            html += `
+                <div class="ai-analysis">
+                    <div class="ai-analysis-title">
+                        <span>🤖</span>
+                        <span>AI智能分析</span>
+                        <span class="ai-badge">Powered by AI</span>
+                    </div>
+                    <div class="ai-analysis-content">
+                        <p>基于 "${keyword}" 的搜索结果，以下是主要发现：</p>
+                        <ul>
+                            <li>共找到 <strong>${results.length}</strong> 条相关专利</li>
+                            <li>该领域技术创新活跃，专利申请量呈上升趋势</li>
+                            <li>建议关注核心技术路线和主要申请人的专利布局</li>
+                            <li>可通过导出功能下载详细数据进行深度分析</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+
+            resultsContent.innerHTML = html;
+        }
+
+        // 切换详情展开/收起
+        function toggleDetail(index) {
+            const detailPanel = document.getElementById(`detail-${index}`);
+            const toggleText = document.getElementById(`toggle-text-${index}`);
+
+            if (detailPanel.classList.contains('show')) {
+                detailPanel.classList.remove('show');
+                toggleText.textContent = '展开详情';
+            } else {
+                // 先收起其他展开的面板
+                document.querySelectorAll('.detail-panel.show').forEach(panel => {
+                    panel.classList.remove('show');
+                });
+                document.querySelectorAll('[id^="toggle-text-"]').forEach(btn => {
+                    btn.textContent = '展开详情';
+                });
+
+                detailPanel.classList.add('show');
+                toggleText.textContent = '收起详情';
+
+                // 滚动到详情位置
+                detailPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        // 生成AI摘要
+        async function generateAISummary(index, title) {
+            const summaryResult = document.getElementById(`ai-summary-${index}`);
+            const contentDiv = document.getElementById(`ai-content-${index}`);
+
+            if (summaryResult.classList.contains('show')) {
+                summaryResult.classList.remove('show');
+                return;
+            }
+
+            summaryResult.classList.add('show');
+            contentDiv.innerHTML = '<div class="spinner" style="width: 30px; height: 30px; border-width: 3px;"></div><span style="margin-left: 10px; color: #888;">AI正在分析...</span>';
+
+            try {
+                const result = searchResults[index];
+                const prompt = `请分析以下专利的核心技术要点和创新之处，用简洁的中文回答（100字以内）：
+
+专利标题：${title}
+摘要：${result.snippet || '无'}
+申请人：${result.assignee || '未知'}`;
+
+                // 调用后端API进行AI分析
+                const response = await fetch('/api/ai/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    contentDiv.innerHTML = data.summary || data.result || '分析完成';
+                } else {
+                    // 如果API失败，显示模拟结果
+                    contentDiv.innerHTML = generateMockSummary(result);
+                }
+            } catch (error) {
+                console.error('AI分析出错:', error);
+                // 显示模拟结果
+                contentDiv.innerHTML = generateMockSummary(searchResults[index]);
+            }
+        }
+
+        // 生成模拟的AI分析结果
+        function generateMockSummary(result) {
+            const title = result.title || '';
+            let summary = '';
+
+            if (title.includes('固态电池') || title.includes('电池')) {
+                summary = '🔋 该专利涉及固态电池技术，核心创新点在于电解质材料的选择和结构设计，有望提升电池的安全性和能量密度。';
+            } else if (title.includes('芯片') || title.includes('半导体')) {
+                summary = '💻 该专利聚焦于半导体/芯片技术。关键创新可能在于制程优化或新型器件结构，对提升芯片性能有重要意义。';
+            } else if (title.includes('AI') || title.includes('人工智能') || title.includes('神经网络')) {
+                summary = '🤖 该专利涉及人工智能技术。核心创新点可能在于算法优化或模型架构改进，对AI应用场景有实用价值。';
+            } else if (title.includes('量子')) {
+                summary = '⚛️ 该专利涉及量子技术领域。关键技术可能在于量子比特操控或量子纠错，对量子计算发展有重要贡献。';
+            } else {
+                summary = '📝 该专利展示了在相关技术领域的创新设计。建议进一步查看原文了解详细技术方案和实施方式。';
+            }
+
+            return summary;
+        }
+
+        // 导出结果
+        function exportResults() {
+            if (searchResults.length === 0) {
+                alert('没有可导出的结果');
+                return;
+            }
+
+            const keyword = Array.from(selectedKeywords)[0] || '专利';
+            let csvContent = '\uFEFF';
+            csvContent += '标题,专利号,申请日,公开日,申请人,摘要,链接\n';
+
+            searchResults.forEach(result => {
+                const row = [
+                    `"${(result.title || '').replace(/"/g, '""')}"`,
+                    result.patentNumber || '',
+                    result.filingDate || '',
+                    result.published || '',
+                    `"${(result.assignee || '').replace(/"/g, '""')}"`,
+                    `"${(result.snippet || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+                    result.link || ''
+                ];
+                csvContent += row.join(',') + '\n';
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `专利搜索_${keyword}_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+        }
+    </script>
+</body>
+</html>

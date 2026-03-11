@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI图片编辑 - 数字员工</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans SC', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #fff;
+    }
+    .header {
+      background: rgba(255,255,255,0.05);
+      padding: 20px 40px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 {
+      font-size: 24px;
+      background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .back-btn {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .container { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+    .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+    .panel {
+      background: rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 30px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .panel-title { font-size: 18px; margin-bottom: 20px; }
+    .upload-area {
+      border: 2px dashed rgba(255,255,255,0.3);
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      min-height: 300px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .upload-area:hover { border-color: #00d2ff; }
+    .upload-icon { font-size: 48px; opacity: 0.6; margin-bottom: 15px; }
+    .upload-text { color: rgba(255,255,255,0.6); font-size: 14px; }
+    .upload-input { display: none; }
+    #preview-image { max-width: 100%; max-height: 350px; border-radius: 8px; display: none; }
+    .form-group { margin-bottom: 20px; }
+    .form-label { display: block; font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 10px; }
+    .form-input {
+      width: 100%;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      padding: 14px;
+      color: #fff;
+      font-size: 14px;
+    }
+    .form-input:focus { outline: none; border-color: #00d2ff; }
+    .form-textarea { min-height: 120px; resize: vertical; }
+    .cost-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: rgba(255,193,7,0.1);
+      border: 1px solid rgba(255,193,7,0.3);
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .cost-text { font-size: 14px; color: #ffc107; }
+    .generate-btn {
+      width: 100%;
+      background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+      border: none;
+      border-radius: 10px;
+      padding: 16px;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .generate-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .result-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; }
+    .result-placeholder { text-align: center; color: rgba(255,255,255,0.4); }
+    .result-placeholder-icon { font-size: 64px; margin-bottom: 20px; opacity: 0.5; }
+    .result-image { max-width: 100%; max-height: 450px; border-radius: 12px; }
+    .download-btn {
+      margin-top: 20px;
+      background: linear-gradient(90deg, #4caf50, #2e7d32);
+      border: none;
+      border-radius: 8px;
+      padding: 12px 30px;
+      color: #fff;
+      cursor: pointer;
+    }
+    #error-msg {
+      background: rgba(244,67,54,0.1);
+      border: 1px solid rgba(244,67,54,0.3);
+      border-radius: 8px;
+      padding: 12px;
+      color: #f44336;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🖼️ AI图片编辑</h1>
+    <button class="back-btn" onclick="window.location.href='/'">← 返回首页</button>
+  </div>
+
+  <div class="container">
+    <div class="main-content">
+      <div class="panel">
+        <div class="panel-title">📤 上传图片</div>
+        <div class="upload-area" onclick="document.getElementById('image-input').click()">
+          <input type="file" id="image-input" class="upload-input" accept="image/*" onchange="handleImageUpload(event)">
+          <div id="upload-placeholder">
+            <div class="upload-icon">🖼️</div>
+            <div class="upload-text">点击或拖拽图片到此处<br>支持 JPG、PNG、WebP 格式</div>
+          </div>
+          <img id="preview-image" alt="预览">
+        </div>
+
+        <div class="form-group" style="margin-top: 25px;">
+          <label class="form-label">✏️ 图片描述（提示词）</label>
+          <textarea class="form-input form-textarea" id="prompt-input" placeholder="描述你想要对图片进行的编辑，例如：&#10;• 将背景改为星空&#10;• 添加彩虹效果&#10;• 变成油画风格"></textarea>
+        </div>
+
+        <div class="cost-info">
+          <span>⚡</span>
+          <span class="cost-text">每次生成消耗 50 算力</span>
+        </div>
+
+        <button class="generate-btn" id="generate-btn" onclick="generateImage()">🎨 开始生成</button>
+        <div id="error-msg"></div>
+      </div>
+
+      <div class="panel result-panel">
+        <div class="panel-title">✨ 生成结果</div>
+        <div id="result-placeholder" class="result-placeholder">
+          <div class="result-placeholder-icon">🎭</div>
+          <div>上传图片并输入描述<br>点击生成按钮开始创作</div>
+        </div>
+        <div id="result-container" style="display:none; text-align:center;">
+          <img id="result-image" class="result-image" alt="生成结果">
+          <button class="download-btn" onclick="downloadImage()">⬇️ 下载图片</button>
+        </div>
+        <div id="loading-indicator" style="display:none; text-align:center;">
+          <div class="spinner" style="width: 40px; height: 40px; margin: 0 auto 20px;"></div>
+          <div>AI 正在创作中...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 使用代理API路径，与网站其他功能保持一致
+    const API_URL = '/api/302/google/gemini-3-pro-image/text-to-image';
+    const API_KEY = 'sk-FzKiwsI5rippsPdKfbAAtHdbKq8CtuQXSx5Mc7IxjbXLl3s3J';
+
+    // 尝试不同的请求方式
+    async function callAPI(imageBase64, prompt) {
+      // 方式1: 使用代理 + Bearer token（与其他功能一致）
+      try {
+        const response1 = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + API_KEY
+          },
+          body: JSON.stringify({ image: imageBase64, prompt: prompt })
+        });
+        if (response1.ok) {
+          const data = await response1.json();
+          console.log('方式1成功:', data);
+          return data;
+        }
+        console.log('方式1失败:', response1.status);
+      } catch(e) { console.log('方式1失败:', e); }
+
+      // 方式2: 直接调用（绕过代理）
+      try {
+        const directUrl = 'https://api.302.ai/ws/api/v3/google/gemini-3-pro-image/text-to-image';
+        const response2 = await fetch(directUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + API_KEY
+          },
+          body: JSON.stringify({ image: imageBase64, prompt: prompt })
+        });
+        if (response2.ok) return await response2.json();
+        console.log('方式2失败:', response2.status);
+      } catch(e) { console.log('方式2失败:', e); }
+
+      // 方式3: 将API key放在请求体中
+      try {
+        const response3 = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ api_key: API_KEY, image: imageBase64, prompt: prompt })
+        });
+        if (response3.ok) return await response3.json();
+        console.log('方式3失败:', response3.status);
+      } catch(e) { console.log('方式3失败:', e); }
+
+      throw new Error('所有API请求方式都失败');
+    }
+    const COST = 50;
+
+    let currentImage = null;
+    let currentResultImage = null;
+
+    // 获取当前用户算力
+    function getUserBalance() {
+      try {
+        const userStr = localStorage.getItem('current_user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          return user.computePoints || 0;
+        }
+      } catch(e) {}
+      return 0;
+    }
+
+    // 初始化
+    function init() {
+      const balance = getUserBalance();
+      console.log('当前算力:', balance);
+    }
+    init();
+
+    function handleImageUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        showError('请上传图片文件');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        currentImage = e.target.result;
+        document.getElementById('preview-image').src = currentImage;
+        document.getElementById('preview-image').style.display = 'block';
+        document.getElementById('upload-placeholder').style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function generateImage() {
+      const prompt = document.getElementById('prompt-input').value.trim();
+      if (!currentImage) { showError('请先上传图片'); return; }
+      if (!prompt) { showError('请输入图片描述'); return; }
+
+      const balance = getUserBalance();
+      if (balance < COST) {
+        showError('算力不足！需要 ' + COST + ' 算力，当前仅 ' + balance + ' 算力');
+        return;
+      }
+
+      // 扣除算力
+      try {
+        const userStr = localStorage.getItem('current_user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          if (user.computePoints >= COST) {
+            user.computePoints = user.computePoints - COST;
+            localStorage.setItem('current_user', JSON.stringify(user));
+            console.log('算力已扣除，剩余:', user.computePoints);
+          }
+        }
+      } catch(e) {
+        console.error('算力扣除失败:', e);
+      }
+
+      document.getElementById('generate-btn').disabled = true;
+      document.getElementById('generate-btn').innerHTML = '<span class="spinner"></span> 生成中...';
+      document.getElementById('result-placeholder').style.display = 'none';
+      document.getElementById('result-container').style.display = 'none';
+      document.getElementById('loading-indicator').style.display = 'block';
+      hideError();
+
+      try {
+        const base64Data = currentImage.split(',')[1];
+        const data = await callAPI(base64Data, prompt);
+        if (data.error) throw new Error(data.error.message || '生成失败');
+
+        let resultImage = '';
+        if (data.image) resultImage = 'data:image/png;base64,' + data.image;
+        else if (data.images && data.images.length > 0) resultImage = 'data:image/png;base64,' + data.images[0];
+        else if (data.data && data.data[0]) resultImage = 'data:image/png;base64,' + data.data[0].image;
+        else throw new Error('未获取到生成图片');
+
+        currentResultImage = resultImage;
+        document.getElementById('result-image').src = resultImage;
+        document.getElementById('loading-indicator').style.display = 'none';
+        document.getElementById('result-container').style.display = 'block';
+
+      } catch(error) {
+        document.getElementById('loading-indicator').style.display = 'none';
+        document.getElementById('result-placeholder').style.display = 'block';
+        showError('生成失败: ' + error.message);
+        console.error('生成错误:', error);
+      } finally {
+        document.getElementById('generate-btn').disabled = false;
+        document.getElementById('generate-btn').innerHTML = '🎨 开始生成';
+      }
+    }
+
+    function downloadImage() {
+      if (!currentResultImage) return;
+      const link = document.createElement('a');
+      link.href = currentResultImage;
+      link.download = 'ai-edited-image-' + Date.now() + '.png';
+      link.click();
+    }
+
+    function showError(msg) {
+      document.getElementById('error-msg').innerHTML = msg;
+      document.getElementById('error-msg').style.display = 'block';
+    }
+
+    function hideError() {
+      document.getElementById('error-msg').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
